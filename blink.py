@@ -1,5 +1,5 @@
 from __future__ import print_function
-import io, json, os, requests, sys, yaml
+import io, json, os, requests, sys, yaml, time
 import dateutil.parser
 
 
@@ -147,15 +147,30 @@ class Blink(object):
     resp = requests.get(self._path(event.video_url), headers=self._auth_headers)
     return resp.content
 
-  def download_thumbnail(self, event):
+  def download_thumbnail(self, thumbnail):
     '''
       returns the jpg data as a file-like object
-      doesn't work - server returns 404
     '''
     self._connect_if_needed()
-    thumbnail_url = self._path(event.video_url[:-4] + '.jpg')
+    thumbnail_url = self._path(thumbnail + '.jpg')
     resp = requests.get(thumbnail_url, headers=self._auth_headers)
     return resp.content
+
+  def capture_thumbnail(self, camera):
+    '''
+    '''
+    self._connect_if_needed()
+    url = 'network/%s/camera/%s/thumbnail' % (camera.network_id, camera.id)
+    old_thumbnail=camera.thumbnail
+    resp = requests.post(self._path(url), headers=self._auth_headers)
+    for i in range(10):
+        url = 'network/%s/camera/%s' % (camera.network_id, camera.camera_id)
+        resp = requests.get(self._path(url), headers=self._auth_headers)
+        thumbnail = resp.json()['camera_status']['thumbnail']
+        if thumbnail != old_thumbnail:
+            return thumbnail
+        time.sleep(2)
+    return None
 
   def sync_modules(self, network):
     '''
